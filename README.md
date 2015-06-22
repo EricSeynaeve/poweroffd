@@ -11,3 +11,13 @@ Logging is going to `/var/log/poweroffd`.
 # Usage
 
 The action configuration files go under `/run/poweroffd`. Only users that belong to the group `poweroffd` can write here.
+
+# Configuration
+
+Poweroffd can be configured with following environment variables:
+
+  - `POWEROFF_COMMAND`
+
+    Indicates which command to use for powering off the system. The default is `/usr/sbin/poweroff`.
+
+With the provided systemd unit file, these variables can be set in `/etc/sysconfig/poweroffd`.
