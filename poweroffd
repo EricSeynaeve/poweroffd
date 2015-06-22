@@ -12,10 +12,7 @@ import socket
 import logging
 
 MONITOR_PATH = '/run/poweroffd'
-POWEROFF_COMMAND = '/usr/sbin/poweroff'
-logging.basicConfig(filename='/var/log/poweroffd', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S %Z', format='[%(asctime)s] %(message)s')
-logging.debug("Path to monitor: " + MONITOR_PATH)
-logging.debug("Poweroff command: " + POWEROFF_COMMAND)
+logging.basicConfig(filename='/var/log/poweroffd', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S %Z', format='[%(asctime)s] %(levelname)s %(message)s')
 
 started_monitor = False
 # key: filename
@@ -24,6 +21,9 @@ monitor_hash = {}
   
 
 def setup():
+  POWEROFF_COMMAND = os.getenv('POWEROFF_COMMAND', '/usr/sbin/poweroff')
+  logging.debug("Poweroff command: " + POWEROFF_COMMAND)
+  logging.debug("Path to monitor: " + MONITOR_PATH)
   if not os.path.isdir(MONITOR_PATH):
     logging.debug("Creating monitoring dir")
     os.mkdir(MONITOR_PATH)
@@ -90,6 +90,7 @@ def run(notifier):
 
   while True:
     if notifier.check_events(1000): # wait for event(s) with timeout of 1 second
+      logging.debug("Processing inotify events")
       notifier.read_events()
       notifier.process_events()
     
@@ -97,7 +98,7 @@ def run(notifier):
     for f in monitor_hash:
       (ip, timeout_epoch) = monitor_hash[f]
       if timeout_epoch > 0 and current_epoch > timeout_epoch:
-        logging.info("Removing file " + f + " (" + str(current_epoch) + " after " + str(timeout_epoch) + ")")
+        logging.info("Removing file " + f + " due to timeout (" + str(current_epoch) + " after " + str(timeout_epoch) + ")")
         os.unlink(f)
 
 if __name__ == '__main__':
