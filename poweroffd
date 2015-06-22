@@ -1,0 +1,108 @@
+#! /usr/bin/env python
+# vim: set ai softtabstop=2 shiftwidth=2 tabstop=80 :
+
+import sys
+import os
+import os.path
+import stat
+import grp
+import pyinotify
+import time
+import socket
+import logging
+
+MONITOR_PATH = '/run/poweroffd'
+POWEROFF_COMMAND = '/usr/sbin/poweroff'
+logging.basicConfig(filename='/var/log/poweroffd', level=logging.DEBUG, datefmt='%Y-%m-%d %H-%M-%S %Z', format='[%(asctime)s] %(message)s')
+logging.debug("Path to monitor: " + MONITOR_PATH)
+logging.debug("Poweroff command: " + POWEROFF_COMMAND)
+
+started_monitor = False
+# key: filename
+# value: [IP, TIMEOUT]
+monitor_hash = {}
+  
+
+def setup():
+  if not os.path.isdir(MONITOR_PATH):
+    logging.debug("Creating monitoring dir")
+    os.mkdir(MONITOR_PATH)
+    gid_poweroffd = grp.getgrnam('poweroffd')
+    os.chown(MONITOR_PATH, 0, gid_poweroffd.gr_gid)
+    os.chmod(MONITOR_PATH, 01770)
+
+  for f in os.listdir(MONITOR_PATH):
+    if os.path.isfile(os.path.join(MONITOR_PATH, f)):
+      read_config(f)
+
+  wm = pyinotify.WatchManager()
+  notifier = pyinotify.Notifier(wm, PoweroffdEventHandler())
+  wm.add_watch(MONITOR_PATH, pyinotify.IN_CLOSE_WRITE | pyinotify.IN_DELETE)
+  
+  logging.debug("Setup finished")
+
+  return notifier
+
+def read_config(f):
+  global started_monitor
+  global monitor_hash
+
+  if not os.path.isabs(f):
+    f = os.path.join(MONITOR_PATH, f)
+
+  logging.debug("Processing " + f)
+  for line in file(f):
+    try:
+      (host, epoch, timeout) = line.split()
+      ip = socket.getaddrinfo(host, None)[0][4][0]
+      timeout_epoch = int(epoch) + int(timeout)
+      logging.info(f + " ==> " + str( (ip, timeout_epoch) ) )
+      monitor_hash[f] = (ip, timeout_epoch)
+      started_monitor = True
+    except:
+      # ignore any malprocessed lines
+      pass
+
+class PoweroffdEventHandler(pyinotify.ProcessEvent):
+
+  def process_IN_DELETE(self, event):
+    global started_monitor
+    global monitor_hash
+
+    f = event.pathname
+    logging.debug("File " + f + " deleted")
+
+    if f in monitor_hash:
+      del monitor_hash[f]
+
+    if started_monitor == True and len(monitor_hash) == 0:
+       # TODO: shutdown computer
+       logging.info("Shutting down")
+
+  def process_IN_CLOSE_WRITE(self, event):
+    f = event.pathname
+
+    logging.debug("File " + f + " changed")
+    read_config(f)
+
+def run(notifier):
+  global monitor_hash
+
+  while True:
+    if notifier.check_events(1000): # wait for event(s) with timeout of 1 second
+      notifier.read_events()
+      notifier.process_events()
+    
+    current_epoch = time.time()
+    for f in monitor_hash:
+      (ip, timeout_epoch) = monitor_hash[f]
+      if timeout_epoch > 0 and current_epoch > timeout_epoch:
+        logging.info("Removing file " + f + " (" + str(current_epoch) + " after " + str(timeout_epoch) + ")")
+        os.unlink(f)
+
+if __name__ == '__main__':
+  notifier = setup()
+  try:
+    run(notifier)
+  except KeyboardInterrupt:
+    sys.exit(0)
