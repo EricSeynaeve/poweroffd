@@ -20,4 +20,8 @@ Poweroffd can be configured with following environment variables:
 
     Indicates which command to use for powering off the system. The default is `/usr/sbin/poweroff`.
 
+  - `LOGLEVEL`
+
+    Defines the loglevel. Can be one of `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL`. Defaults to `INFO`.
+
 With the provided systemd unit file, these variables can be set in `/etc/sysconfig/poweroffd`.
