@@ -90,6 +90,7 @@ def run(notifier):
 
   while True:
     if notifier.check_events(1000): # wait for event(s) with timeout of 1 second
+      logging.debug("Processing inotify events")
       notifier.read_events()
       notifier.process_events()
     
@@ -97,7 +98,7 @@ def run(notifier):
     for f in monitor_hash:
       (ip, timeout_epoch) = monitor_hash[f]
       if timeout_epoch > 0 and current_epoch > timeout_epoch:
-        logging.info("Removing file " + f + " (" + str(current_epoch) + " after " + str(timeout_epoch) + ")")
+        logging.info("Removing file " + f + " due to timeout (" + str(current_epoch) + " after " + str(timeout_epoch) + ")")
         os.unlink(f)
 
 if __name__ == '__main__':
