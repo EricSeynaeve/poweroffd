@@ -12,7 +12,12 @@ import socket
 import logging
 
 MONITOR_PATH = '/run/poweroffd'
-logging.basicConfig(filename='/var/log/poweroffd', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S %Z', format='[%(asctime)s] %(levelname)s %(message)s')
+LOGLEVEL = os.getenv('LOGLEVEL', 'INFO').upper()
+if LOGLEVEL not in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
+  logging.basicConfig(filename='/var/log/poweroffd', level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S %Z', format='[%(asctime)s] %(levelname)s %(message)s')
+  logging.warning("Unknown loglevel " + LOGLEVEL + ". Defaulting to INFO.")
+else:
+  logging.basicConfig(filename='/var/log/poweroffd', level=eval("logging."+LOGLEVEL), datefmt='%Y-%m-%d %H:%M:%S %Z', format='[%(asctime)s] %(levelname)s %(message)s')
 
 started_monitor = False
 # key: filename
