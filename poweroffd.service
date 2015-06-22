@@ -3,6 +3,7 @@ Description=Deamon to poweroff the system when all jobs are done or timed out
 
 [Service]
 ExecStart=/usr/sbin/poweroffd
+EnvironmentFile=-/etc/sysconfig/poweroffd
 
 [Install]
 WantedBy=multi-user.target
