@@ -13,7 +13,7 @@ import logging
 
 MONITOR_PATH = '/run/poweroffd'
 POWEROFF_COMMAND = '/usr/sbin/poweroff'
-logging.basicConfig(filename='/var/log/poweroffd', level=logging.DEBUG, datefmt='%Y-%m-%d %H-%M-%S %Z', format='[%(asctime)s] %(message)s')
+logging.basicConfig(filename='/var/log/poweroffd', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S %Z', format='[%(asctime)s] %(message)s')
 logging.debug("Path to monitor: " + MONITOR_PATH)
 logging.debug("Poweroff command: " + POWEROFF_COMMAND)
 
