@@ -25,3 +25,9 @@ Poweroffd can be configured with following environment variables:
     Defines the loglevel. Can be one of `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL`. Defaults to `INFO`.
 
 With the provided systemd unit file, these variables can be set in `/etc/sysconfig/poweroffd`.
+
+# Dependencies
+
+## Executing test code
+
+Uses the [pytest](http://pytest.org) library.
