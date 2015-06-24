@@ -10,6 +10,7 @@ import pyinotify
 import time
 import socket
 import logging
+import yaml
 
 
 class Application():
@@ -53,22 +54,46 @@ class Application():
     
     logging.debug("Setup finished")
 
+  """
+  Read the setup config file.
+
+  The configuration file is a yaml hash consisting of the following required entries:
+    - start_time: seconds since the epoch when this file was created
+    - poweroff_on: hash to indicate when the remove this configuration
+      Current possibilities here are:
+        - timeout: seconds to wait for the timeout
+        - host: host to follow being alive
+      All these combinations are or'ed together. So if you give a timeout and a host
+      entry, the configuration will be removed when either the timeout is expired OR
+      the host is not responding anymore.
+  """
   def read_config(self, f):
     if not os.path.isabs(f):
       f = os.path.join(self.MONITOR_PATH, f)
 
     logging.debug("Processing " + f)
-    for line in file(f):
-      try:
-        (host, epoch, timeout) = line.split()
+    fh = file(f)
+    try:
+      config_hash = yaml.safe_load(fh)
+
+      # take the number of seconds since the epoch as an
+      # integer number (precision: 1 sec)
+      t = int(float(config_hash['start_time']))
+      config_hash['start_time'] = t
+
+      # convert the possible hostname to an IP address
+      if 'host' in config_hash['poweroff_on']:
+        host = config_hash['poweroff_on']['host']
         ip = socket.getaddrinfo(host, None)[0][4][0]
-        timeout_epoch = int(epoch) + int(timeout)
-        logging.info(f + " ==> " + str( (ip, timeout_epoch) ) )
-        self.monitor_hash[f] = (ip, timeout_epoch)
-        self.started_monitor = True
-      except:
-        # ignore any malprocessed lines
-        pass
+        config_hash['poweroff_on']['host'] = ip
+
+      self.monitor_hash[f] = config_hash
+      self.started_monitor = True
+    except Exception, e:
+      # ignore erroneous yaml files
+      logging.warning("Error was reased reading "+f+": "+str(e))
+    finally:
+      fh.close()
 
   def _process_inotify_events(self):
     if self.notifier.check_events(1000): # wait for event(s) with timeout of 1 second

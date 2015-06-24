@@ -12,6 +12,47 @@ Logging is going to `/var/log/poweroffd`.
 
 The action configuration files go under `/run/poweroffd`. Only users that belong to the group `poweroffd` can write here.
 
+The configuration files are yaml files with top structure hash. Required keys are:
+
+  - `start_time`
+
+      seconds since the epoch when this file was created
+         
+  - `poweroff_on`
+      
+      hash to indicate when the remove this configuration
+      
+      Current possibilities here are:
+        
+      - `timeout`
+
+          seconds to wait for the timeout
+ 
+      - `host`
+
+          host to follow being alive
+
+     All these combinations are or'ed together. So if you give a timeout and a host entry, the configuration will be removed when either the timeout is expired OR the host is not responding anymore.
+     
+Example:
+
+    ---
+    start_time: 1435179394
+    poweroff_on:
+        timeout: 360
+        host: somewhere
+
+With this configuration, we indicate that the starttime is Wed Jun 24 20:56:34 2015 UCT.
+
+This configuration will be removed when
+
+- it is later than 21:02:34 UTC (360 seconds or 6 minutes later)
+- OR the host `somewhere` is not pingable anymore.
+
+Of course, you can also delete the configuration file to manually remove it.
+
+When all the read configurations are removed, `poweroffd` will execute the configured power-off command.
+
 # Configuration
 
 Poweroffd can be configured with following environment variables:
@@ -28,6 +69,10 @@ With the provided systemd unit file, these variables can be set in `/etc/sysconf
 
 # Dependencies
 
-## Executing test code
+## poweroffd
+
+Depends on [pyinotify](https://github.com/seb-m/pyinotify).
+
+## Testing code
 
 Uses the [pytest](http://pytest.org) library.
