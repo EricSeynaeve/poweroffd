@@ -25,7 +25,7 @@ class Application():
     self.LOGLEVEL = os.getenv('LOGLEVEL', 'INFO').upper()
     self.POWEROFF_COMMAND = os.getenv('POWEROFF_COMMAND', '/usr/sbin/poweroff')
   
-  def _set_monitor_path_permissions(self):
+  def _set_monitor_path_permissions(self): # pragma: no cover
       gid_poweroffd = grp.getgrnam('poweroffd')
       os.chown(self.MONITOR_PATH, 0, gid_poweroffd.gr_gid)
       os.chmod(self.MONITOR_PATH, 01770)
@@ -188,7 +188,7 @@ class PoweroffdEventHandler(pyinotify.ProcessEvent):
     logging.debug("File " + f + " changed")
     self.app.read_config(f)
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
   app = Application()
   app.setup()
   try:
