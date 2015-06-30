@@ -72,6 +72,7 @@ With the provided systemd unit file, these variables can be set in `/etc/sysconf
 ## poweroffd
 
 Depends on [pyinotify](https://github.com/seb-m/pyinotify).
+Depends on [fping](http://fping.org/).
 
 ## Testing code
 
