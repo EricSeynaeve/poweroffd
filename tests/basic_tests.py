@@ -11,9 +11,6 @@ import pytest
 
 from poweroffd import poweroffd
 
-def noop():
-  pass
-
 now = time.time()
 timeout_config = """---
   start_time: """+str(now)+"""
@@ -30,7 +27,11 @@ host_config_hash = {'start_time': int(now), 'poweroff_on': {'host': '127.0.0.1'}
 
 @pytest.fixture
 def app(tmpdir):
+  def noop():
+    pass
+
   os.environ['LOGLEVEL'] = 'DEBUG'
+  os.environ['POWEROFF_COMMAND'] = '/bin/true'
   appl = poweroffd.Application(logfile=str(tmpdir.join('logfile')), monitor_path=str(tmpdir.join('run')))
   appl._set_monitor_path_permissions = noop
   rootlogger = logging.getLogger()
@@ -42,6 +43,7 @@ def app(tmpdir):
 @pytest.mark.quick
 def test_init(tmpdir, app):
   assert app.LOGLEVEL == 'DEBUG'
+  assert app.POWEROFF_COMMAND == '/bin/true'
   assert app.LOGFILE == str(tmpdir.join('logfile'))
   assert app.MONITOR_PATH == str(tmpdir.join('run'))
   
