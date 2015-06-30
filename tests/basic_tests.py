@@ -5,6 +5,7 @@ import os
 import time
 from threading import Timer
 import logging
+import tempfile
 
 import pytest
 
@@ -51,19 +52,18 @@ def test_setup_call(tmpdir, app):
   assert app.monitor_hash == {}
   assert tmpdir.join('logfile').exists()
 
-@pytest.mark.quick
-def create_timeout_file(tmpdir):
+def create_config_file(tmpdir, basename, content):
   tmpdir.ensure('run', dir=True)
-  f = tmpdir.join('run','timeout_config')
-  f.write(timeout_config)
-  return str(f)
+  (handle, name) = tempfile.mkstemp(dir=str(tmpdir.join('run')),prefix=basename, text=True)
+  handle = os.fdopen(handle, 'w')
+  handle.write(content)
+  return name
 
-@pytest.mark.quick
+def create_timeout_file(tmpdir):
+  return create_config_file(tmpdir, 'timeout_config', timeout_config)
+
 def create_host_file(tmpdir):
-  tmpdir.ensure('run', dir=True)
-  f = tmpdir.join('run','host_config')
-  f.write(host_config)
-  return str(f)
+  return create_config_file(tmpdir, 'host_config', host_config)
 
 @pytest.mark.quick
 def test_setup_call_with_file(tmpdir, app):
@@ -84,12 +84,48 @@ def test_setup_call_with_files(tmpdir, app):
 
 def do_timeout(tmpdir, app, timeout):
   def _emergency_break():
+    app.__PREV_HASH__ = app.monitor_hash
     app.monitor_hash = {}
     app.__EMERGENCY_APPLIED__ = True
 
   file1 = create_timeout_file(tmpdir)
   app.setup()
   app.monitor_hash[file1]['poweroff_on']['timeout'] = timeout
+  t = Timer(2, _emergency_break, ())
+  t.start()
+  app.__EMERGENCY_APPLIED__ = False
+  app.run()
+  # application returned fine, cancel the timer now
+  t.cancel()
+
+def do_host(tmpdir, app, ip):
+  def _emergency_break():
+    app.__PREV_HASH__ = app.monitor_hash
+    app.monitor_hash = {}
+    app.__EMERGENCY_APPLIED__ = True
+
+  file1 = create_host_file(tmpdir)
+  app.setup()
+  app.monitor_hash[file1]['poweroff_on']['host'] = ip
+  t = Timer(2, _emergency_break, ())
+  t.start()
+  app.__EMERGENCY_APPLIED__ = False
+  app.run()
+  # application returned fine, cancel the timer now
+  t.cancel()
+
+def do_hosts(tmpdir, app, ip1, ip2):
+  def _emergency_break():
+    app.__PREV_HASH__ = app.monitor_hash
+    app.monitor_hash = {}
+    app.__EMERGENCY_APPLIED__ = True
+
+  file1 = create_host_file(tmpdir)
+  file2 = create_host_file(tmpdir)
+  app.setup()
+  assert len(app.monitor_hash) == 2
+  app.monitor_hash[file1]['poweroff_on']['host'] = ip1
+  app.monitor_hash[file2]['poweroff_on']['host'] = ip2
   t = Timer(2, _emergency_break, ())
   t.start()
   app.__EMERGENCY_APPLIED__ = False
@@ -106,3 +142,32 @@ def test_timeout(tmpdir, app):
 def test_timeout_expired(tmpdir, app):
   do_timeout(tmpdir, app, 5)
   assert app.__EMERGENCY_APPLIED__ == True
+  assert len(app.__PREV_HASH__) == 1
+
+@pytest.mark.semi_quick
+def test_host_up(tmpdir, app):
+  do_host(tmpdir, app, '127.0.0.1')
+  assert app.__EMERGENCY_APPLIED__ == True
+  assert len(app.__PREV_HASH__) == 1
+
+@pytest.mark.semi_quick
+def test_host_down(tmpdir, app):
+  do_host(tmpdir, app, '0.0.0.1')
+  assert app.__EMERGENCY_APPLIED__ == False
+
+@pytest.mark.semi_quick
+def test_host_up_host_down(tmpdir, app):
+  do_hosts(tmpdir, app, '127.0.0.1', '0.0.0.1')
+  assert app.__EMERGENCY_APPLIED__ == True
+  assert len(app.__PREV_HASH__) == 1
+
+@pytest.mark.semi_quick
+def test_same_host_twice_up(tmpdir, app):
+  do_hosts(tmpdir, app, '127.0.0.1', '127.0.0.1')
+  assert app.__EMERGENCY_APPLIED__ == True
+  assert len(app.__PREV_HASH__) == 2
+
+@pytest.mark.semi_quick
+def test_same_host_twice_down(tmpdir, app):
+  do_hosts(tmpdir, app, '0.0.0.1', '0.0.0.1')
+  assert app.__EMERGENCY_APPLIED__ == False

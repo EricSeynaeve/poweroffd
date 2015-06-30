@@ -11,6 +11,7 @@ import time
 import socket
 import logging
 import yaml
+import subprocess
 
 
 class Application():
@@ -112,7 +113,31 @@ class Application():
     os.unlink(f)
 
   def _check_hosts(self):
-    pass
+    hosts = {}
+    for f in self.monitor_hash:
+      h = self.monitor_hash[f]
+      po = h['poweroff_on']
+      if 'host' in po:
+        host = po['host']
+        # multiple files can point to the same host
+        if host not in hosts:
+          hosts[host] = [f]
+        else:
+          hosts[host].append(f)
+    if len(hosts) > 0:
+      args = ['fping', '-a', '-A', '-r', '0']
+      args.extend(hosts.keys())
+      proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+      (stdout, stderr) = proc.communicate(None)
+      # check which hosts have replied
+      for line in stdout.split('\n'):
+        if len(line) > 0:
+          del hosts[line]
+    # Remove the hosts remaining. These are non-pingable.
+    if len(hosts):
+      for host in hosts:
+        for f in hosts[host]:
+          self._remove_entry(f)
 
   def _check_timeouts(self):
     current_epoch = time.time()
