@@ -54,20 +54,20 @@ class Application():
     
     logging.debug("Setup finished")
 
-  """
-  Read the setup config file.
-
-  The configuration file is a yaml hash consisting of the following required entries:
-    - start_time: seconds since the epoch when this file was created
-    - poweroff_on: hash to indicate when the remove this configuration
-      Current possibilities here are:
-        - timeout: seconds to wait for the timeout
-        - host: host to follow being alive
-      All these combinations are or'ed together. So if you give a timeout and a host
-      entry, the configuration will be removed when either the timeout is expired OR
-      the host is not responding anymore.
-  """
   def read_config(self, f):
+    """
+    Read the setup config file.
+
+    The configuration file is a yaml hash consisting of the following required entries:
+      - start_time: seconds since the epoch when this file was created
+      - poweroff_on: hash to indicate when the remove this configuration
+        Current possibilities here are:
+          - timeout: seconds to wait for the timeout
+          - host: host to follow being alive
+        All these combinations are or'ed together. So if you give a timeout and a host
+        entry, the configuration will be removed when either the timeout is expired OR
+        the host is not responding anymore.
+    """
     if not os.path.isabs(f):
       f = os.path.join(self.MONITOR_PATH, f)
 
@@ -80,6 +80,11 @@ class Application():
       # integer number (precision: 1 sec)
       t = int(float(config_hash['start_time']))
       config_hash['start_time'] = t
+
+      # convert the possible timeout value to seconds (precision: 1 sec)
+      if 'timeout' in config_hash['poweroff_on']:
+        s = int(float(config_hash['poweroff_on']['timeout']))
+        config_hash['poweroff_on']['timeout'] = s
 
       # convert the possible hostname to an IP address
       if 'host' in config_hash['poweroff_on']:
@@ -101,20 +106,44 @@ class Application():
       self.notifier.read_events()
       self.notifier.process_events()
     
+  def _remove_entry(self, f):
+    # inotify will detect the file deletion and trigger the PoweroffdEventHandler object
+    # which will then delete the data structure
+    os.unlink(f)
+
+  def _check_hosts(self):
+    pass
+
+  def _check_timeouts(self):
+    current_epoch = time.time()
+    for f in self.monitor_hash:
+      h = self.monitor_hash[f]
+      po = h['poweroff_on']
+      if 'timeout' in po:
+        start_epoch = h['start_time']
+        timeout_epoch = start_epoch + po['timeout']
+        if timeout_epoch > 0 and current_epoch > timeout_epoch:
+          logging.info("Removing file " + f + " due to timeout (" + str(current_epoch) + " is after " + str(timeout_epoch) + ")")
+          self._remove_entry(f)
+
   def run(self):
     while True:
       self._process_inotify_events()
       
-      current_epoch = time.time()
-      for f in self.monitor_hash:
-        (ip, timeout_epoch) = self.monitor_hash[f]
-        if timeout_epoch > 0 and current_epoch > timeout_epoch:
-          logging.info("Removing file " + f + " due to timeout (" + str(current_epoch) + " after " + str(timeout_epoch) + ")")
-          os.unlink(f)
+      self._check_hosts()
+      self._check_timeouts()
+      if self.started_monitor == True and len(self.monitor_hash) == 0:
+        if self._poweroff():
+          # executing poweroff succeeded.
+          break
 
-  def _shutdown(self):
+  def _poweroff(self):
+    """
+    Call the poweroff command.
+    """
     # TODO: shutdown computer
-    logging.info("Shutting down")
+    logging.info("Powering off")
+    return True
 
 class PoweroffdEventHandler(pyinotify.ProcessEvent):
   def __init__(self, app):
@@ -127,9 +156,6 @@ class PoweroffdEventHandler(pyinotify.ProcessEvent):
 
     if f in self.app.monitor_hash:
       del self.app.monitor_hash[f]
-
-    if self.app.started_monitor == True and len(self.app.monitor_hash) == 0:
-      self.app._shutdown()
 
   def process_IN_CLOSE_WRITE(self, event):
     f = event.pathname
