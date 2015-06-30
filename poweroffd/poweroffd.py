@@ -166,8 +166,8 @@ class Application():
     """
     Call the poweroff command.
     """
-    # TODO: shutdown computer
     logging.info("Powering off")
+    subprocess.call([self.POWEROFF_COMMAND])
     return True
 
 class PoweroffdEventHandler(pyinotify.ProcessEvent):
