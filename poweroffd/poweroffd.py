@@ -135,8 +135,16 @@ class Application():
         if len(line) > 0:
           del hosts[line]
     # Remove the hosts remaining. These are non-pingable.
-    if len(hosts):
+    if len(hosts) > 0:
       for host in hosts:
+        # really, really make sure it's not a small network glitch
+        logging.debug("Checking if "+host+" really dropped out of the network.")
+        if subprocess.call(['ping', '-c', '2', '-i', '0.3', '-w', '5', host]) == 0:
+          # host has replied 2 times. All is well :-)
+          logging.debug(host+" did reply to a ping")
+          continue
+        # host has not replied to continuous pings for 5 seconds.
+        logging.info(host+" not pingable. Removing all entries that follow it.")
         for f in hosts[host]:
           self._remove_entry(f)
 
