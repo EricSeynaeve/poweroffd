@@ -53,7 +53,7 @@ class Application():
     self.notifier = pyinotify.Notifier(wm, self.inotify_event_handler)
     wm.add_watch(self.MONITOR_PATH, pyinotify.IN_CLOSE_WRITE | pyinotify.IN_DELETE)
     
-    logging.debug("Setup finished")
+    logging.info("Setup finished")
 
   def read_config(self, f):
     """
@@ -72,7 +72,7 @@ class Application():
     if not os.path.isabs(f):
       f = os.path.join(self.MONITOR_PATH, f)
 
-    logging.debug("Processing " + f)
+    logging.info("Processing " + f)
     fh = file(f)
     try:
       config_hash = yaml.safe_load(fh)
@@ -93,6 +93,7 @@ class Application():
         ip = socket.getaddrinfo(host, None)[0][4][0]
         config_hash['poweroff_on']['host'] = ip
 
+      logging.debug("Parsed content of "+f+": "+str(config_hash))
       self.monitor_hash[f] = config_hash
       self.started_monitor = True
     except Exception, e:
@@ -166,7 +167,7 @@ class Application():
     """
     Call the poweroff command.
     """
-    logging.info("Powering off")
+    logging.info("Powering off by calling "+self.POWEROFF_COMMAND)
     subprocess.call([self.POWEROFF_COMMAND])
     return True
 
@@ -177,7 +178,7 @@ class PoweroffdEventHandler(pyinotify.ProcessEvent):
 
   def process_IN_DELETE(self, event):
     f = event.pathname
-    logging.debug("File " + f + " deleted")
+    logging.info("File " + f + " deleted")
 
     if f in self.app.monitor_hash:
       del self.app.monitor_hash[f]
@@ -185,7 +186,7 @@ class PoweroffdEventHandler(pyinotify.ProcessEvent):
   def process_IN_CLOSE_WRITE(self, event):
     f = event.pathname
 
-    logging.debug("File " + f + " changed")
+    logging.debug("File " + f + " created or changed")
     self.app.read_config(f)
 
 if __name__ == '__main__': # pragma: no cover
