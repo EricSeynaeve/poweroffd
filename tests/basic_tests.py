@@ -51,6 +51,7 @@ def test_init(tmpdir, app):
 def test_setup_call(tmpdir, app):
   app.setup()
   assert tmpdir.join('run').ensure(dir=True)
+  assert len(app.monitor_hash) == 0
   assert app.monitor_hash == {}
   assert tmpdir.join('logfile').exists()
 
@@ -134,6 +135,28 @@ def do_hosts(tmpdir, app, ip1, ip2):
   app.run()
   # application returned fine, cancel the timer now
   t.cancel()
+
+@pytest.mark.semi_quick
+def test_read_new_file(tmpdir, app):
+  def _emergency_break():
+    app.__PREV_HASH__ = app.monitor_hash
+    app.monitor_hash = {}
+    app.__EMERGENCY_APPLIED__ = True
+
+  app.setup()
+  assert len(app.monitor_hash) == 0
+  assert app.started_monitor == False
+  t = Timer(2, _emergency_break, ())
+  file1 = create_host_file(tmpdir)
+  t.start()
+  app.__EMERGENCY_APPLIED__ = False
+  app.run()
+  # application returned fine, cancel the timer now
+  t.cancel()
+  assert len(app.__PREV_HASH__) == 1
+  assert app.__PREV_HASH__ == {file1: host_config_hash}
+  assert app.started_monitor == True
+  assert app.__EMERGENCY_APPLIED__ == True
 
 @pytest.mark.semi_quick
 def test_timeout(tmpdir, app):
