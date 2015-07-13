@@ -59,6 +59,8 @@ class Application():
     """
     Read the setup config file.
 
+    Configuration files end with .conf. Other files are ignored.
+
     The configuration file is a yaml hash consisting of the following required entries:
       - start_time: seconds since the epoch when this file was created
       - poweroff_on: hash to indicate when the remove this configuration
@@ -72,9 +74,14 @@ class Application():
     if not os.path.isabs(f):
       f = os.path.join(self.MONITOR_PATH, f)
 
+    if not f.endswith('.conf'):
+      logging.debug("Ignoring " + f)
+      return
+
     logging.info("Processing " + f)
-    fh = file(f)
+    fh = None
     try:
+      fh = file(f)
       config_hash = yaml.safe_load(fh)
 
       # take the number of seconds since the epoch as an
@@ -100,7 +107,8 @@ class Application():
       # ignore erroneous yaml files
       logging.warning("Error was reased reading "+f+": "+str(e))
     finally:
-      fh.close()
+      if fh != None:
+        fh.close()
 
   def _process_inotify_events(self):
     if self.notifier.check_events(1000): # wait for event(s) with timeout of 1 second

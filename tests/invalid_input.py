@@ -48,7 +48,7 @@ def test_wrong_loglevel(tmpdir, app):
 
 def create_config_file(tmpdir, basename, content):
   tmpdir.ensure('run', dir=True)
-  (handle, name) = tempfile.mkstemp(dir=str(tmpdir.join('run')),prefix=basename, text=True)
+  (handle, name) = tempfile.mkstemp(dir=str(tmpdir.join('run')),prefix=basename, suffix='.conf', text=True)
   handle = os.fdopen(handle, 'w')
   handle.write(content)
   return name

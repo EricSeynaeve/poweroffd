@@ -57,7 +57,7 @@ def test_setup_call(tmpdir, app):
 
 def create_config_file(tmpdir, basename, content):
   tmpdir.ensure('run', dir=True)
-  (handle, name) = tempfile.mkstemp(dir=str(tmpdir.join('run')),prefix=basename, text=True)
+  (handle, name) = tempfile.mkstemp(dir=str(tmpdir.join('run')),prefix=basename, suffix='.conf', text=True)
   handle = os.fdopen(handle, 'w')
   handle.write(content)
   return name
@@ -143,12 +143,16 @@ def test_read_new_file(tmpdir, app):
     app.monitor_hash = {}
     app.__EMERGENCY_APPLIED__ = True
 
+  t = Timer(2, _emergency_break, ())
+  t.start()
   app.setup()
   assert len(app.monitor_hash) == 0
   assert app.started_monitor == False
-  t = Timer(2, _emergency_break, ())
   file1 = create_host_file(tmpdir)
-  t.start()
+  # If there is a failure reading the above file, we won't
+  # be able to interrupt the app because it thinks nothing
+  # is still monitored
+  app.started_monitor = True
   app.__EMERGENCY_APPLIED__ = False
   app.run()
   # application returned fine, cancel the timer now
