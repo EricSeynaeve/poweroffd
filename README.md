@@ -2,7 +2,7 @@
 Daemon to automate shutdown when certain actions have finished (timeout, finished command, ...). Multiple actions can be monitored.
 
 # Installation
-- Create a group `poweroffd` (will be made more flexible in the future, see issue #3).
+- Create a group `poweroffd` (will be made more flexible in the future, see issue #6).
 - Put the daemon file in `/usr/sbin`.
 - For systemd, put the services file in the normal location (e.g. `/usr/lib/systemd/system`) and enable the service (`systemctl enable poweroffd`).
 
