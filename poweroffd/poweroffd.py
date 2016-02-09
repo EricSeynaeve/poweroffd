@@ -111,8 +111,8 @@ class Application():
           config_hash['poweroff_on']['pid_info'] = proc.as_dict()
           config_hash['poweroff_on']['pid'] = pid
         else:
-          logging.info('Process with PID ' + str(pid) + ' not found. Silently ignoring this entry.')
-          del config_hash['poweroff_on']['pid']
+          logging.info('Process with PID ' + str(pid) + ' not found. Ignoring configuration file '+f+'.')
+          return
 
       logging.debug("Parsed content of "+f+": "+str(config_hash))
       self.monitor_hash[f] = config_hash
