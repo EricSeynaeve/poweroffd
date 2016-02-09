@@ -38,7 +38,9 @@ Required keys are:
 
           process ID to follow till it's completed
 
-     All these combinations are or'ed together. So if you give a timeout and a host entry, the configuration will be removed when either the timeout is expired OR the host is not responding anymore.
+     All these combinations are OR'ed together. So if you give a timeout and a host entry, the configuration will be removed when either the timeout is expired OR the host is not responding anymore.
+
+     If you wish to AND configurations (e.g. only reboot when the timeout is expired AND the host is not respoding anymore), you can create multiple configuration files.
      
 Example of file `my_input.conf`:
 
@@ -56,6 +58,27 @@ This configuration will be removed when
 - OR the host `somewhere` is not pingable anymore.
 
 Of course, you can also delete the configuration file to manually remove it.
+
+Tip: use multiple configuration files to have an AND relationship:
+
+Create a file `my_input1.conf`:
+
+    ---
+    start_time: 1435179394
+    poweroff_on:
+        timeout: 360
+
+and `my_input2.conf`:
+
+    ---
+    start_time: 1435179394
+    poweroff_on:
+        host: somewhere
+
+This configuration will be removed when
+
+- it is later than 21:02:34 UTC (360 seconds or 6 minutes later)
+- AND the host `somewhere` is not pingable anymore.
 
 When all the read configurations are removed, `poweroffd` will execute the configured power-off command.
 
