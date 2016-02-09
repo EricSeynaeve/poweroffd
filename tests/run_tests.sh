@@ -15,4 +15,4 @@ then
 	fi
 	shift
 fi
-py.test --cov-report term-missing --cov ${SCRIPT_DIR} $files "$@"
+py.test --cov-report term-missing --cov ${SCRIPT_DIR} "$@" $files

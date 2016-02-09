@@ -12,6 +12,7 @@ import socket
 import logging
 import yaml
 import subprocess
+import psutil
 
 
 class Application():
@@ -67,6 +68,7 @@ class Application():
         Current possibilities here are:
           - timeout: seconds to wait for the timeout
           - host: host to follow being alive
+          - pid: process to follow till completion
         All these combinations are or'ed together. So if you give a timeout and a host
         entry, the configuration will be removed when either the timeout is expired OR
         the host is not responding anymore.
@@ -99,6 +101,18 @@ class Application():
         host = config_hash['poweroff_on']['host']
         ip = socket.getaddrinfo(host, None)[0][4][0]
         config_hash['poweroff_on']['host'] = ip
+
+      # convert the possible pid to an integer
+      # if the pid doesn't exist (anymore), remove this entry from the list
+      if 'pid' in config_hash['poweroff_on']:
+        pid = int(config_hash['poweroff_on']['pid'])
+        if psutil.pid_exists(pid):
+          proc = psutil.Process(pid)
+          config_hash['poweroff_on']['pid_info'] = proc.as_dict()
+          config_hash['poweroff_on']['pid'] = pid
+        else:
+          logging.info('Process with PID ' + str(pid) + ' not found. Silently ignoring this entry.')
+          del config_hash['poweroff_on']['pid']
 
       logging.debug("Parsed content of "+f+": "+str(config_hash))
       self.monitor_hash[f] = config_hash
@@ -168,12 +182,31 @@ class Application():
           logging.info("Removing file " + f + " due to timeout (" + str(current_epoch) + " is after " + str(timeout_epoch) + ")")
           self._remove_entry(f)
 
+  def _check_pids(self):
+    for f in self.monitor_hash:
+      h = self.monitor_hash[f]
+      po = h['poweroff_on']
+      if 'pid' in po:
+        pid = po['pid']
+        pid_info = po['pid_info']
+        if not psutil.pid_exists(pid):
+          logging.info("Removing file " + f + " due completion of PID " + str(pid) + " (" + pid_info['name'] + ")")
+          self._remove_entry(f)
+          return
+        proc = psutil.Process(pid)
+        cur_pid_info = proc.as_dict()
+        if cur_pid_info['exe'] != pid_info['exe'] or cur_pid_info['create_time'] != pid_info['create_time']:
+          logging.info("Removing file " + f + " due since PID " + str(pid) + " (" + pid_info['name'] + ") is now a different process (" + cur_pid_info['name']+")")
+          self._remove_entry(f)
+          return
+
   def run(self):
     while True:
       self._process_inotify_events()
       
       self._check_hosts()
       self._check_timeouts()
+      self._check_pids()
       if self.started_monitor == True and len(self.monitor_hash) == 0:
         if self._poweroff():
           # executing poweroff succeeded.

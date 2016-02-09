@@ -34,6 +34,10 @@ Required keys are:
 
           host to follow being alive
 
+      - `pid`
+
+          process ID to follow till it's completed
+
      All these combinations are or'ed together. So if you give a timeout and a host entry, the configuration will be removed when either the timeout is expired OR the host is not responding anymore.
      
 Example of file `my_input.conf`:
@@ -76,6 +80,8 @@ With the provided systemd unit file, these variables can be set in `/etc/sysconf
 Depends on [pyinotify](https://github.com/seb-m/pyinotify) for checking if new configuration files are added.
 
 Depends on [fping](http://fping.org/) for testing if the hosts are up in an efficient manner.
+
+Depends on [psutil](http://pythonhosted.org/psutil/) for a more cross-platform way to work with process information.
 
 ## Testing code
 
