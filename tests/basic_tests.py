@@ -7,10 +7,14 @@ from threading import Timer
 import logging
 import tempfile
 import subprocess
+import socket
 
 import pytest
 
 from poweroffd import poweroffd
+
+# local IP address in either IPv6 or IPv4, depending on the local settings
+local_ip = socket.getaddrinfo('localhost', None)[0][4][0]
 
 now = time.time()
 timeout_config = """---
@@ -24,7 +28,7 @@ host_config = """---
   poweroff_on:
     host: localhost
 """
-host_config_hash = {'start_time': int(now), 'poweroff_on': {'host': '127.0.0.1'}}
+host_config_hash = {'start_time': int(now), 'poweroff_on': {'host': local_ip}}
 pid_config = """---
   start_time: """+str(now)+"""
   poweroff_on:
@@ -205,7 +209,7 @@ def test_timeout_expired(tmpdir, app):
 
 @pytest.mark.semi_quick
 def test_host_up(tmpdir, app):
-  do_host(tmpdir, app, '127.0.0.1')
+  do_host(tmpdir, app, local_ip)
   assert app.__EMERGENCY_APPLIED__ == True
   assert len(app.__PREV_HASH__) == 1
 
@@ -216,13 +220,13 @@ def test_host_down(tmpdir, app):
 
 @pytest.mark.semi_quick
 def test_host_up_host_down(tmpdir, app):
-  do_hosts(tmpdir, app, '127.0.0.1', '0.0.0.1')
+  do_hosts(tmpdir, app, local_ip, '0.0.0.1')
   assert app.__EMERGENCY_APPLIED__ == True
   assert len(app.__PREV_HASH__) == 1
 
 @pytest.mark.semi_quick
 def test_same_host_twice_up(tmpdir, app):
-  do_hosts(tmpdir, app, '127.0.0.1', '127.0.0.1')
+  do_hosts(tmpdir, app, local_ip, local_ip)
   assert app.__EMERGENCY_APPLIED__ == True
   assert len(app.__PREV_HASH__) == 2
 
