@@ -16,25 +16,24 @@ from poweroffd import poweroffd
 # local IP address in either IPv6 or IPv4, depending on the local settings
 local_ip = socket.getaddrinfo('localhost', None)[0][4][0]
 
-now = time.time()
 timeout_config = """---
-  start_time: """+str(now)+"""
+  start_time: NOW
   poweroff_on:
     timeout: 30
 """
-timeout_config_hash = {'start_time': int(now), 'poweroff_on': {'timeout': int(30)}}
+timeout_config_hash = {'start_time': 'NOW', 'poweroff_on': {'timeout': int(30)}}
 host_config = """---
-  start_time: """+str(now)+"""
+  start_time: NOW
   poweroff_on:
     host: localhost
 """
-host_config_hash = {'start_time': int(now), 'poweroff_on': {'host': local_ip}}
+host_config_hash = {'start_time': 'NOW', 'poweroff_on': {'host': local_ip}}
 pid_config = """---
-  start_time: """+str(now)+"""
+  start_time: NOW
   poweroff_on:
     pid: 1
 """
-pid_config_hash = {'start_time': int(now), 'poweroff_on': {'pid': int(1)}}
+pid_config_hash = {'start_time': 'NOW', 'poweroff_on': {'pid': int(1)}}
 
 @pytest.fixture
 def app(tmpdir):
@@ -66,27 +65,30 @@ def test_setup_call(tmpdir, app):
   assert app.monitor_hash == {}
   assert tmpdir.join('logfile').exists()
 
-def create_config_file(tmpdir, basename, content):
+def create_config_file(tmpdir, basename, content, now):
   tmpdir.ensure('run', dir=True)
   (handle, name) = tempfile.mkstemp(dir=str(tmpdir.join('run')),prefix=basename, suffix='.conf', text=True)
   handle = os.fdopen(handle, 'w')
-  handle.write(content)
+  new_content = content.replace('start_time: NOW', 'start_time: '+str(int(now)))
+  handle.write(new_content)
   return name
 
-def create_timeout_file(tmpdir, timeout=30):
+def create_timeout_file(tmpdir, now, timeout=30):
   new_timeout_config = timeout_config.replace('timeout: 30', 'timeout: '+str(timeout))
-  return create_config_file(tmpdir, 'timeout_config', new_timeout_config)
+  return create_config_file(tmpdir, 'timeout_config', new_timeout_config, now)
 
-def create_host_file(tmpdir):
-  return create_config_file(tmpdir, 'host_config', host_config)
+def create_host_file(tmpdir, now):
+  return create_config_file(tmpdir, 'host_config', host_config, now)
 
-def create_pid_file(tmpdir, pid=1):
+def create_pid_file(tmpdir, now, pid=1):
   new_pid_config = pid_config.replace('pid: 1', 'pid: '+str(pid))
-  return create_config_file(tmpdir, 'pid_config', new_pid_config)
+  return create_config_file(tmpdir, 'pid_config', new_pid_config, now)
 
 @pytest.mark.quick
 def test_setup_call_with_file(tmpdir, app):
-  file1 = create_timeout_file(tmpdir)
+  now = int(time.time())
+  file1 = create_timeout_file(tmpdir, now)
+  timeout_config_hash['start_time'] = now
   app.setup()
   assert len(app.monitor_hash) == 1
   assert app.monitor_hash == {file1: timeout_config_hash}
@@ -94,9 +96,13 @@ def test_setup_call_with_file(tmpdir, app):
 
 @pytest.mark.quick
 def test_setup_call_with_files(tmpdir, app):
-  file1 = create_timeout_file(tmpdir)
-  file2 = create_host_file(tmpdir)
-  file3 = create_pid_file(tmpdir)
+  now = int(time.time())
+  file1 = create_timeout_file(tmpdir, now)
+  timeout_config_hash['start_time'] = now
+  file2 = create_host_file(tmpdir, now)
+  host_config_hash['start_time'] = now
+  file3 = create_pid_file(tmpdir, now)
+  pid_config_hash['start_time'] = now
   app.setup()
   assert len(app.monitor_hash) == 3
   # first delete volatile information
@@ -111,7 +117,8 @@ def do_timeout(tmpdir, app, timeout):
     app.monitor_hash = {}
     app.__EMERGENCY_APPLIED__ = True
 
-  file1 = create_timeout_file(tmpdir, timeout)
+  now = int(time.time())
+  file1 = create_timeout_file(tmpdir, timeout, now)
   app.setup()
   t = Timer(2, _emergency_break, ())
   t.start()
@@ -126,7 +133,8 @@ def do_host(tmpdir, app, ip):
     app.monitor_hash = {}
     app.__EMERGENCY_APPLIED__ = True
 
-  file1 = create_host_file(tmpdir)
+  now = int(time.time())
+  file1 = create_host_file(tmpdir, now)
   app.setup()
   app.monitor_hash[file1]['poweroff_on']['host'] = ip
   t = Timer(2, _emergency_break, ())
@@ -142,8 +150,9 @@ def do_hosts(tmpdir, app, ip1, ip2):
     app.monitor_hash = {}
     app.__EMERGENCY_APPLIED__ = True
 
-  file1 = create_host_file(tmpdir)
-  file2 = create_host_file(tmpdir)
+  now = int(time.time())
+  file1 = create_host_file(tmpdir, now)
+  file2 = create_host_file(tmpdir, now)
   app.setup()
   assert len(app.monitor_hash) == 2
   app.monitor_hash[file1]['poweroff_on']['host'] = ip1
@@ -161,7 +170,8 @@ def do_pid(tmpdir, app, pid):
     app.monitor_hash = {}
     app.__EMERGENCY_APPLIED__ = True
 
-  file1 = create_pid_file(tmpdir, pid)
+  now = int(time.time())
+  file1 = create_pid_file(tmpdir, now, pid)
   app.setup()
   t = Timer(2, _emergency_break, ())
   t.start()
@@ -177,12 +187,14 @@ def test_read_new_file(tmpdir, app):
     app.monitor_hash = {}
     app.__EMERGENCY_APPLIED__ = True
 
+  now = int(time.time())
   t = Timer(2, _emergency_break, ())
   t.start()
   app.setup()
   assert len(app.monitor_hash) == 0
   assert app.started_monitor == False
-  file1 = create_host_file(tmpdir)
+  file1 = create_host_file(tmpdir, now)
+  host_config_hash['start_time'] = now
   # If there is a failure reading the above file, we won't
   # be able to interrupt the app because it thinks nothing
   # is still monitored
