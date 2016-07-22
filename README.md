@@ -100,11 +100,13 @@ With the provided systemd unit file, these variables can be set in `/etc/sysconf
 
 ## poweroffd
 
-Depends on [pyinotify](https://github.com/seb-m/pyinotify) for checking if new configuration files are added.
+Depends on [PyYAML](https://pyyaml.org) for reading the configuration files.
 
-Depends on [fping](http://fping.org/) for testing if the hosts are up in an efficient manner.
+Depends on [pyinotify](https://github.com/seb-m/pyinotify) to check for changes in the configuration files.
 
 Depends on [psutil](http://pythonhosted.org/psutil/) for a more cross-platform way to work with process information.
+
+Depends on [fping](http://fping.org/) for testing if the hosts are up in an efficient manner.
 
 ## Testing code
 
