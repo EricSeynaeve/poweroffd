@@ -299,8 +299,3 @@ def test_pid_not_there_anymore_during_run(tmpdir, app):
   sub_proc = subprocess.Popen(['/usr/bin/sleep', '3'])
   do_pid(tmpdir, app, sub_proc)
   assert app.__EMERGENCY_APPLIED__ == False
-
-@pytest.mark.semi_quick
-def test_pid1(tmpdir, app):
-  do_pid(tmpdir, app, 1)
-  assert app.__EMERGENCY_APPLIED__ == True
