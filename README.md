@@ -2,15 +2,17 @@
 Daemon to automate shutdown when certain actions have finished (timeout, finished command, ...). Multiple actions can be monitored.
 
 # Installation
-- Create a group `poweroffd` (will be made more flexible in the future, see issue #6).
+- Ensure that the user running the daemon (e.g. poweroffd) can write to the logfile (default: `/var/log/poweroffd`)
+- Ensure that the user running the daemon (e.g. poweroffd) can read and write in the run directory (default: `/run/poweroffd`)
+- Ensure that the user running the daemon (e.g. poweroffd) can execute the poweroff command (default: `/usr/sbin/poweroff`)
 - Put the daemon file in `/usr/sbin`.
 - For systemd, put the services file in the normal location (e.g. `/usr/lib/systemd/system`) and enable the service (`systemctl enable poweroffd`).
 
-Logging is going to `/var/log/poweroffd`.
-
 # Usage
 
-The action configuration files go under `/run/poweroffd`. Only users that belong to the group `poweroffd` can write here.
+Logging defaults to `/var/log/poweroffd`.
+
+The action configuration files by default go under `/run/poweroffd`.
 
 The configuration files are yaml files with top structure hash. These files have to end with `.conf` or they will be ignored.
 

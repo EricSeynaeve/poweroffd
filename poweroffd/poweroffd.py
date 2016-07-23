@@ -27,11 +27,6 @@ class Application():
     self.LOGLEVEL = os.getenv('LOGLEVEL', 'INFO').upper()
     self.POWEROFF_COMMAND = os.getenv('POWEROFF_COMMAND', '/usr/sbin/poweroff')
   
-  def _set_monitor_path_permissions(self): # pragma: no cover
-      gid_poweroffd = grp.getgrnam('poweroffd')
-      os.chown(self.MONITOR_PATH, 0, gid_poweroffd.gr_gid)
-      os.chmod(self.MONITOR_PATH, 01770)
-
   def setup(self):
     if self.LOGLEVEL not in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
       logging.basicConfig(filename=self.LOGFILE, level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S %Z', format='[%(asctime)s] %(levelname)s %(message)s')
@@ -44,7 +39,6 @@ class Application():
     if not os.path.isdir(self.MONITOR_PATH):
       logging.debug("Creating monitoring dir")
       os.mkdir(self.MONITOR_PATH)
-      self._set_monitor_path_permissions()
 
     for f in os.listdir(self.MONITOR_PATH):
       if os.path.isfile(os.path.join(self.MONITOR_PATH, f)):
