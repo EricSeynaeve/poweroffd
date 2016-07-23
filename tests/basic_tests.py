@@ -96,6 +96,16 @@ def test_setup_call_with_file(tmpdir, app):
   assert app.started_monitor == True
 
 @pytest.mark.quick
+def test_setup_call_with_file_wrong_extension(tmpdir, app):
+  now = int(time.time())
+  file1 = create_timeout_file(tmpdir, now)
+  os.rename(file1, file1+'.bla')
+  app.setup()
+  assert len(app.monitor_hash) == 0
+  assert app.monitor_hash == {}
+  assert app.started_monitor == False
+
+@pytest.mark.quick
 def test_setup_call_with_files(tmpdir, app):
   now = int(time.time())
   file1 = create_timeout_file(tmpdir, now)
