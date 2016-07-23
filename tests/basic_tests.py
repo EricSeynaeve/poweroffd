@@ -299,3 +299,22 @@ def test_pid_not_there_anymore_during_run(tmpdir, app):
   sub_proc = subprocess.Popen(['/usr/bin/sleep', '3'])
   do_pid(tmpdir, app, sub_proc)
   assert app.__EMERGENCY_APPLIED__ == False
+
+@pytest.mark.semi_quick
+def test_pid_different_process(tmpdir, app):
+  old_get_process_dict = app._get_process_dict
+  def raise_failure(pid):
+    if raise_failure.call_count == 0:
+      raise_failure.call_count += 1
+      return old_get_process_dict(pid)
+    else:
+      d = old_get_process_dict(pid)
+      d['create_time'] += 600
+      return d
+
+  raise_failure.call_count = 0
+  app._get_process_dict = raise_failure
+
+  sub_proc = subprocess.Popen(['/usr/bin/sleep', '3'])
+  do_pid(tmpdir, app, sub_proc)
+  assert app.__EMERGENCY_APPLIED__ == False
