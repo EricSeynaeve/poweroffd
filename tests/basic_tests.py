@@ -8,6 +8,7 @@ import logging
 import tempfile
 import subprocess
 import socket
+import psutil
 
 import pytest
 
@@ -164,15 +165,25 @@ def do_hosts(tmpdir, app, ip1, ip2):
   # application returned fine, cancel the timer now
   t.cancel()
 
-def do_pid(tmpdir, app, pid):
+def do_pid(tmpdir, app, sub_proc):
+  # ugly hack but we seem to need to poll the subprocess every time
+  # otherwise python will not see it to be finished
+  app.old_check_pids = app._check_pids
+  def new_check_pids():
+    sub_proc.poll()
+    app.old_check_pids()
+  app._check_pids = new_check_pids
+
   def _emergency_break():
     app.__PREV_HASH__ = app.monitor_hash
     app.monitor_hash = {}
     app.__EMERGENCY_APPLIED__ = True
 
+  pid = sub_proc.pid
   now = int(time.time())
   file1 = create_pid_file(tmpdir, now, pid)
   app.setup()
+  assert file1 not in app.erroneous_files
   t = Timer(2, _emergency_break, ())
   t.start()
   app.__EMERGENCY_APPLIED__ = False
@@ -251,31 +262,43 @@ def test_same_host_twice_down(tmpdir, app):
 def test_pid_done(tmpdir, app):
   sub_proc = subprocess.Popen(['/usr/bin/sleep', '1'])
 
-  # ugly hack but we seem to need to poll the subprocess every time
-  # otherwise python will not see it to be finished
-  app.old_check_pids = app._check_pids
-  def new_check_pids():
-    sub_proc.poll()
-    app.old_check_pids()
-  app._check_pids = new_check_pids
-
-  do_pid(tmpdir, app, sub_proc.pid)
+  do_pid(tmpdir, app, sub_proc)
   assert app.__EMERGENCY_APPLIED__ == False
 
 @pytest.mark.semi_quick
 def test_pid_not_done(tmpdir, app):
   sub_proc = subprocess.Popen(['/usr/bin/sleep', '3'])
-
-  # ugly hack but we seem to need to poll the subprocess every time
-  # otherwise python will not see it to be finished
-  app.old_check_pids = app._check_pids
-  def new_check_pids():
-    sub_proc.poll()
-    app.old_check_pids()
-  app._check_pids = new_check_pids
-
-  do_pid(tmpdir, app, sub_proc.pid)
+  do_pid(tmpdir, app, sub_proc)
   assert app.__EMERGENCY_APPLIED__ == True
+
+def test_pid_not_there_anymore_during_setup(tmpdir, app):
+  def raise_failure(pid):
+    raise psutil.NoSuchProcess(pid, 'mocked')
+  app._get_process_dict = raise_failure
+
+  sub_proc = subprocess.Popen(['/usr/bin/sleep', '1'])
+  pid = sub_proc.pid
+  now = int(time.time())
+  file1 = create_pid_file(tmpdir, now, pid)
+  app.setup()
+  assert len(app.monitor_hash) == 0
+  assert file1 not in app.erroneous_files
+
+@pytest.mark.semi_quick
+def test_pid_not_there_anymore_during_run(tmpdir, app):
+  old_get_process_dict = app._get_process_dict
+  def raise_failure(pid):
+    if raise_failure.call_count == 0:
+      raise_failure.call_count += 1
+      return old_get_process_dict(pid)
+    else:
+      raise psutil.NoSuchProcess(pid, 'mocked')
+  raise_failure.call_count = 0
+  app._get_process_dict = raise_failure
+
+  sub_proc = subprocess.Popen(['/usr/bin/sleep', '3'])
+  do_pid(tmpdir, app, sub_proc)
+  assert app.__EMERGENCY_APPLIED__ == False
 
 @pytest.mark.semi_quick
 def test_pid1(tmpdir, app):

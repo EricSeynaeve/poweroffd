@@ -21,6 +21,7 @@ class Application():
     # key: filename
     # value: [IP, TIMEOUT]
     self.monitor_hash = {}
+    self.erroneous_files = set()
     self.LOGFILE = logfile
     self.MONITOR_PATH = monitor_path
     self.LOGLEVEL = os.getenv('LOGLEVEL', 'INFO').upper()
@@ -56,6 +57,10 @@ class Application():
     
     logging.info("Setup finished")
 
+  def _get_process_dict(self, pid):
+    proc = psutil.Process(pid)
+    return proc.as_dict()
+
   def read_config(self, f):
     """
     Read the setup config file.
@@ -72,6 +77,9 @@ class Application():
         All these combinations are or'ed together. So if you give a timeout and a host
         entry, the configuration will be removed when either the timeout is expired OR
         the host is not responding anymore.
+
+    Files where unexpected errors occured (e.g. host not existing) will be ignored. These files
+    are collected in the self.erroneous_files set.
     """
     if not os.path.isabs(f):
       f = os.path.join(self.MONITOR_PATH, f)
@@ -103,23 +111,23 @@ class Application():
         config_hash['poweroff_on']['host'] = ip
 
       # convert the possible pid to an integer
-      # if the pid doesn't exist (anymore), remove this entry from the list
       if 'pid' in config_hash['poweroff_on']:
         pid = int(config_hash['poweroff_on']['pid'])
-        if psutil.pid_exists(pid):
-          proc = psutil.Process(pid)
-          config_hash['poweroff_on']['pid_info'] = proc.as_dict()
+        try:
+          config_hash['poweroff_on']['pid_info'] = self._get_process_dict(pid)
           config_hash['poweroff_on']['pid'] = pid
-        else:
+        except psutil.NoSuchProcess:
           logging.info('Process with PID ' + str(pid) + ' not found. Ignoring configuration file '+f+'.')
           return
 
       logging.debug("Parsed content of "+f+": "+str(config_hash))
       self.monitor_hash[f] = config_hash
       self.started_monitor = True
+      self.erroneous_files.discard(f)
     except Exception, e:
       # ignore erroneous yaml files
       logging.warning("Error was reased reading "+f+": "+str(e))
+      self.erroneous_files.add(f)
     finally:
       if fh != None:
         fh.close()
@@ -189,16 +197,14 @@ class Application():
       if 'pid' in po:
         pid = po['pid']
         pid_info = po['pid_info']
-        if not psutil.pid_exists(pid):
+        try:
+          cur_pid_info = self._get_process_dict(pid)
+          if cur_pid_info['exe'] != pid_info['exe'] or cur_pid_info['create_time'] != pid_info['create_time']:
+            logging.info("Removing file " + f + " due since PID " + str(pid) + " (" + pid_info['name'] + ") is now a different process (" + cur_pid_info['name']+")")
+            self._remove_entry(f)
+        except psutil.NoSuchProcess:
           logging.info("Removing file " + f + " due completion of PID " + str(pid) + " (" + pid_info['name'] + ")")
           self._remove_entry(f)
-          return
-        proc = psutil.Process(pid)
-        cur_pid_info = proc.as_dict()
-        if cur_pid_info['exe'] != pid_info['exe'] or cur_pid_info['create_time'] != pid_info['create_time']:
-          logging.info("Removing file " + f + " due since PID " + str(pid) + " (" + pid_info['name'] + ") is now a different process (" + cur_pid_info['name']+")")
-          self._remove_entry(f)
-          return
 
   def run(self):
     while True:
