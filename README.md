@@ -5,8 +5,11 @@ Daemon to automate shutdown when certain actions have finished (timeout, finishe
 - Ensure that the user running the daemon (e.g. poweroffd) can write to the logfile (default: `/var/log/poweroffd`)
 - Ensure that the user running the daemon (e.g. poweroffd) can read and write in the run directory (default: `/run/poweroffd`)
 - Ensure that the user running the daemon (e.g. poweroffd) can execute the poweroff command (default: `/usr/sbin/poweroff`)
-- Put the daemon file in `/usr/sbin`.
 - For systemd, put the services file in the normal location (e.g. `/usr/lib/systemd/system`) and enable the service (`systemctl enable poweroffd`).
+- Put the files under following location (assuming the systemd configuration is used):
+  - sbin/poweroffd       -> /usr/sbin/poweroffd
+  - sysconfig/poweroffd  -> /usr/sysconfig/pooweroffd
+  - source/poweroffd.py  -> PYTHON_SITE_PACKAGES_DIRECTORY/poweroffd.py
 
 # Usage
 

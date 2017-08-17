@@ -1,0 +1,2 @@
+POWEROFF_COMMAND=/usr/sbin/poweroff
+LOGLEVEL=info

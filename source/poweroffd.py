@@ -14,7 +14,6 @@ import yaml
 import subprocess
 import psutil
 
-
 class Application():
   def __init__(self, logfile='/var/log/poweroffd', monitor_path='/run/poweroffd'):
     self.started_monitor = False
@@ -26,7 +25,7 @@ class Application():
     self.MONITOR_PATH = monitor_path
     self.LOGLEVEL = os.getenv('LOGLEVEL', 'INFO').upper()
     self.POWEROFF_COMMAND = os.getenv('POWEROFF_COMMAND', '/usr/sbin/poweroff')
-  
+
   def setup(self):
     if self.LOGLEVEL not in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
       logging.basicConfig(filename=self.LOGFILE, level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S %Z', format='[%(asctime)s] %(levelname)s %(message)s')
@@ -48,7 +47,7 @@ class Application():
     self.inotify_event_handler = PoweroffdEventHandler(self)
     self.notifier = pyinotify.Notifier(wm, self.inotify_event_handler)
     wm.add_watch(self.MONITOR_PATH, pyinotify.IN_CLOSE_WRITE | pyinotify.IN_DELETE)
-    
+
     logging.info("Setup finished")
 
   def _get_process_dict(self, pid):
@@ -118,7 +117,7 @@ class Application():
       self.monitor_hash[f] = config_hash
       self.started_monitor = True
       self.erroneous_files.discard(f)
-    except Exception, e:
+    except Exception as e:
       # ignore erroneous yaml files
       logging.warning("Error was reased reading "+f+": "+str(e))
       self.erroneous_files.add(f)
@@ -131,7 +130,7 @@ class Application():
       logging.debug("Processing inotify events")
       self.notifier.read_events()
       self.notifier.process_events()
-    
+
   def _remove_entry(self, f):
     # inotify will detect the file deletion and trigger the PoweroffdEventHandler object
     # which will then delete the data structure
@@ -203,7 +202,7 @@ class Application():
   def run(self):
     while True:
       self._process_inotify_events()
-      
+
       self._check_hosts()
       self._check_timeouts()
       self._check_pids()
