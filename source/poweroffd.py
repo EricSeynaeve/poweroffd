@@ -216,7 +216,7 @@ class Application():
     Call the poweroff command.
     """
     logging.info("Powering off by calling "+self.POWEROFF_COMMAND)
-    subprocess.call([self.POWEROFF_COMMAND])
+    subprocess.call([self.POWEROFF_COMMAND], shell=True)
     return True
 
 class PoweroffdEventHandler(pyinotify.ProcessEvent):
