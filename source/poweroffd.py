@@ -84,7 +84,7 @@ class Application():
     logging.info("Processing " + f)
     fh = None
     try:
-      fh = file(f)
+      fh = open(f)
       config_hash = yaml.safe_load(fh)
 
       # take the number of seconds since the epoch as an
