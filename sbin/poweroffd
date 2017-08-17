@@ -3,6 +3,7 @@
 
 if __name__ == '__main__':
   import poweroffd
+  import sys
 
   app = poweroffd.Application()
   app.setup()
