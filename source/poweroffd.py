@@ -151,7 +151,7 @@ class Application():
     if len(hosts) > 0:
       args = ['fping', '-a', '-A', '-r', '0']
       args.extend(hosts.keys())
-      proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+      proc = subprocess.Popen(args, stdout=subprocess.PIPE, universal_newlines=True)
       (stdout, stderr) = proc.communicate(None)
       # check which hosts have replied
       for line in stdout.split('\n'):
