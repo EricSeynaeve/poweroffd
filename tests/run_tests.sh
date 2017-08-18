@@ -1,7 +1,7 @@
 #! /bin/bash
 
 TEST_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
-SCRIPT_DIR=$(realpath "$TEST_DIR/..")
+SCRIPT_DIR=$(realpath "$TEST_DIR/../source")
 export PYTHONPATH=$SCRIPT_DIR
 
 func=''

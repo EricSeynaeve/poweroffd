@@ -12,7 +12,7 @@ import psutil
 
 import pytest
 
-from poweroffd import poweroffd
+import poweroffd
 
 # local IP address in either IPv6 or IPv4, depending on the local settings
 local_ip = socket.getaddrinfo('localhost', None)[0][4][0]

@@ -8,7 +8,7 @@ import tempfile
 
 import pytest
 
-from poweroffd import poweroffd
+import poweroffd
 
 now = time.time()
 timeout_config = """---
